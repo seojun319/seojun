@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>택배 엘리베이터 전용 버튼 시뮬레이터</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', 'Noto Sans KR', sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            display: flex;
+            gap: 30px;
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 900px;
+            width: 100%;
+        }
+
+        /* 왼쪽: 엘리베이터 타워 시각화 */
+        .building-section {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .display-board {
+            background: #111;
+            color: #00ff66;
+            font-size: 24px;
+            font-weight: bold;
+            padding: 10px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            width: 100%;
+            text-align: center;
+            box-shadow: inset 0 0 10px rgba(0,255,102,0.2);
+        }
+
+        .elevator-shaft {
+            width: 120px;
+            height: 400px;
+            background: #e0e0e0;
+            border: 3px solid #555;
+            border-radius: 8px;
+            position: relative;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+
+        .floor-indicator {
+            flex: 1;
+            border-top: 1px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 10px;
+            font-size: 12px;
+            color: #777;
+        }
+
+        .elevator-car {
+            position: absolute;
+            width: 100%;
+            height: 40px; /* 1개 층 높이 */
+            background: linear-gradient(135deg, #4b6cb7, #182848);
+            border: 2px solid #fff;
+            border-radius: 4px;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            transition: bottom 1s ease-in-out;
+            bottom: 0px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+
+        .door {
+            width: 80%;
+            height: 80%;
+            background: #d1d5db;
+            border: 1px solid #9ca3af;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #333;
+            font-size: 11px;
+        }
+
+        /* 오른쪽: 전용 버튼 조작반 */
+        .control-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .panel-title {
+            font-size: 20px;
+            font-weight: bold;
+            color: #333;
+            border-bottom: 2px solid #3b82f6;
+            padding-bottom: 8px;
+        }
+
+        .mode-toggle {
+            display: flex;
+            gap: 10px;
+            background: #e5e7eb;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            background: transparent;
+            transition: 0.2s;
+        }
+
+        .mode-btn.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        /* 층 버튼 Grid */
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 5px;
+        }
+
+        .btn-floor {
+            padding: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            background: #f3f4f6;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-floor:hover {
+            background: #e5e7eb;
+        }
+
+        .btn-floor.selected {
+            background: #ff9800;
+            color: white;
+            border-color: #e67e22;
+            box-shadow: 0 0 8px rgba(255, 152, 0, 0.5);
+        }
+
+        /* 택배 전용 액션 버튼 */
+        .action-btns {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn-delivery {
+            padding: 12px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-delivery:hover {
+            background: #059669;
+        }
+
+        .btn-start {
+            padding: 14px;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-start:hover {
+            background: #dc2626;
+        }
+
+        .btn-reset {
+            padding: 10px;
+            background: #6b7280;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* 상태 로그 */
+        .status-log {
+            font-size: 13px;
+            color: #4b5563;
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #e5e7eb;
+            height: 60px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 건물 및 엘리베이터 동작 시각화 영역 -->
+    <div class="building-section">
+        <div class="display-board" id="display">1F (대기 중)</div>
+        <div class="elevator-shaft" id="shaft">
+            <div class="floor-indicator">10F</div>
+            <div class="floor-indicator">9F</div>
+            <div class="floor-indicator">8F</div>
+            <div class="floor-indicator">7F</div>
+            <div class="floor-indicator">6F</div>
+            <div class="floor-indicator">5F</div>
+            <div class="floor-indicator">4F</div>
+            <div class="floor-indicator">3F</div>
+            <div class="floor-indicator">2F</div>
+            <div class="floor-indicator">1F</div>
+
+            <div class="elevator-car" id="elevator">
+                <div class="door" id="door-text">닫힘</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 엘리베이터 조작반 영역 -->
+    <div class="control-panel">
+        <div class="panel-title">📦 택배 전용 조작반</div>
+
+        <!-- 모드 선택 -->
+        <div class="mode-toggle">
+            <button class="mode-btn active" id="mode-normal" onclick="setMode('normal')">일반 모드</button>
+            <button class="mode-btn" id="mode-delivery" onclick="setMode('delivery')">택배 모드 🚚</button>
+        </div>
+
+        <!-- 층 선택 버튼 -->
+        <div class="buttons-grid" id="floor-buttons">
+            <!-- 자바스크립트로 동적 생성 -->
+        </div>
+
+        <!-- 택배 전용 기능 버튼 -->
+        <div class="action-btns">
+            <button class="btn-delivery" onclick="selectOddFloors()">[택배] 홀수층 전체 선택</button>
+            <button class="btn-delivery" onclick="selectEvenFloors()">[택배] 짝수층 전체 선택</button>
+            <button class="btn-start" onclick="startElevator()">배송 운행 시작</button>
+            <button class="btn-reset" onclick="resetElevator()">초기화</button>
+        </div>
+
+        <!-- 실시간 상태 표시 -->
+        <div class="status-log" id="status-log">
+            상태: 시스템 준비 완료. 모드를 선택하세요.
+        </div>
+    </div>
+</div>
+
+<script>
+    const totalFloors = 10;
+    let currentFloor = 1;
+    let targetFloors = [];
+    let isMoving = false;
+    let isDeliveryMode = false;
+
+    const elevator = document.getElementById('elevator');
+    const display = document.getElementById('display');
+    const doorText = document.getElementById('door-text');
+    const statusLog = document.getElementById('status-log');
+    const buttonsContainer = document.getElementById('floor-buttons');
+
+    // 1. 층 버튼 생성 (10층 ~ 1층)
+    function createButtons() {
+        buttonsContainer.innerHTML = '';
+        for (let i = totalFloors; i >= 1; i--) {
+            const btn = document.createElement('button');
+            btn.className = 'btn-floor';
+            btn.id = `btn-${i}`;
+            btn.innerText = `${i}층`;
+            btn.onclick = () => toggleFloor(i);
+            buttonsContainer.appendChild(btn);
+        }
+    }
+
+    // 2. 모드 변경 (일반 vs 택배)
+    function setMode(mode) {
+        if (isMoving) return;
+        isDeliveryMode = (mode === 'delivery');
+        
+        document.getElementById('mode-normal').classList.toggle('active', !isDeliveryMode);
+        document.getElementById('mode-delivery').classList.toggle('active', isDeliveryMode);
+
+        log(`모드 변경: ${isDeliveryMode ? '택배 전용 모드 (다중 선택 가능)' : '일반 모드'}`);
+        resetElevator();
+    }
+
+    // 3. 층 버튼 클릭 로직
+    function toggleFloor(floor) {
+        if (isMoving) return;
+
+        if (!isDeliveryMode) {
+            // 일반 모드는 단일 선택 후 즉시 이동
+            targetFloors = [floor];
+            updateButtonStyles();
+            startElevator();
+        } else {
+            // 택배 모드는 다중 선택 가능
+            const index = targetFloors.indexOf(floor);
+            if (index > -1) {
+                targetFloors.splice(index, 1);
+            } else {
+                targetFloors.push(floor);
+            }
+            updateButtonStyles();
+        }
+    }
+
+    // 홀수/짝수 일괄 선택 (택배 전용 기능)
+    function selectOddFloors() {
+        if (isMoving || !isDeliveryMode) return;
+        targetFloors = [1, 3, 5, 7, 9];
+        updateButtonStyles();
+        log('홀수층이 일괄 선택되었습니다.');
+    }
+
+    function selectEvenFloors() {
+        if (isMoving || !isDeliveryMode) return;
+        targetFloors = [2, 4, 6, 8, 10];
+        updateButtonStyles();
+        log('짝수층이 일괄 선택되었습니다.');
+    }
+
+    function updateButtonStyles() {
+        for (let i = 1; i <= totalFloors; i++) {
+            const btn = document.getElementById(`btn-${i}`);
+            if (targetFloors.includes(i)) {
+                btn.classList.add('selected');
+            } else {
+                btn.classList.remove('selected');
+            }
+        }
+    }
+
+    // 4. 엘리베이터 운행 시작
+    async function startElevator() {
+        if (isMoving || targetFloors.length === 0) return;
+        isMoving = true;
+
+        // 순차 정차를 위해 오름차순 정렬 (현재 층 기준 가까운 순으로 확장 가능)
+        targetFloors.sort((a, b) => a - b);
+        log(`운행 시작 - 방문 예정: ${targetFloors.join('층, ')}층`);
+
+        while (targetFloors.length > 0) {
+            const nextFloor = targetFloors.shift();
+            
+            // UI 버튼 불빛 끄기
+            document.getElementById(`btn-${nextFloor}`).classList.remove('selected');
+
+            // 이동 애니메이션
+            await moveToFloor(nextFloor);
+            
+            // 정차 및 문 열림 시뮬레이션
+            await stopAndOpenDoor(nextFloor);
+        }
+
+        log('모든 목적지에 도달했습니다. 운행 완료.');
+        display.innerText = `${currentFloor}F (대기 중)`;
+        isMoving = false;
+    }
+
+    // 특정 층으로 이동 애니메이션
+    function moveToFloor(floor) {
+        return new Promise((resolve) => {
+            currentFloor = floor;
+            display.innerText = `${currentFloor}F (이동 중...)`;
+            log(`${currentFloor}층으로 이동 중...`);
+            
+            // CSS bottom 위치 계산 (1층=0px, 층당 40px)
+            const bottomPx = (floor - 1) * 40;
+            elevator.style.bottom = `${bottomPx}px`;
+
+            // 이동 시간 1초 대기
+            setTimeout(resolve, 1200);
+        });
+    }
+
+    // 문 열림/닫힘 시뮬레이션
+    function stopAndOpenDoor(floor) {
+        return new Promise((resolve) => {
+            display.innerText = `${floor}F (도착)`;
+            doorText.innerText = '열림 📦';
+            doorText.style.background = '#fef08a';
+            log(`[도착] ${floor}층 문이 열렸습니다. (택배 상하차 중)`);
+
+            // 1.5초 후 문 닫힘
+            setTimeout(() => {
+                doorText.innerText = '닫힘';
+                doorText.style.background = '#d1d5db';
+                log(`${floor}층 문이 닫힙니다.`);
+                setTimeout(resolve, 500); // 닫히는 여운 시간
+            }, 1500);
+        });
+    }
+
+    // 초기화
+    function resetElevator() {
+        if (isMoving) return;
+        targetFloors = [];
+        currentFloor = 1;
+        elevator.style.bottom = '0px';
+        display.innerText = '1F (대기 중)';
+        doorText.innerText = '닫힘';
+        doorText.style.background = '#d1d5db';
+        updateButtonStyles();
+        log('시뮬레이터가 초기화되었습니다.');
+    }
+
+    function log(message) {
+        statusLog.innerText = `[안내] ${message}`;
+    }
+
+    // 초기화 실행
+    createButtons();
+</script>
+
+</body>
+</html>
