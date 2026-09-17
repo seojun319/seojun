@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 택배 전용 엘리베이터</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        /* 스마트폰 화면 프레임 */
+        .app-container {
+            width: 100%;
+            max-width: 400px;
+            height: 700px;
+            background-color: #ffffff;
+            border-radius: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            border: 8px solid #333;
+        }
+
+        /* 앱 헤더 */
+        .app-header {
+            background-color: #2b3a4a;
+            color: #fff;
+            padding: 20px 15px 15px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* 화면 스텝 영역 */
+        .step {
+            display: none;
+            padding: 20px;
+            flex: 1;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .step.active {
+            display: flex;
+        }
+
+        /* 공통 버튼 */
+        .btn {
+            width: 100%;
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background-color: #0056b3;
+        }
+
+        /* 1단계: QR 스캐너 모의 화면 */
+        .qr-scanner {
+            width: 100%;
+            height: 250px;
+            background-color: #222;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            border: 2px dashed #007bff;
+        }
+
+        .qr-laser {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background-color: #ff0000;
+            top: 0;
+            animation: scan 2s infinite ease-in-out;
+            box-shadow: 0 0 8px #ff0000;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            50% { top: 95%; }
+            100% { top: 0%; }
+        }
+
+        /* 2단계: 호수 및 층 입력 */
+        .info-card {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #495057;
+        }
+
+        .input-group input, .input-group select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+
+        /* 엘리베이터 모듈 그리드 */
+        .ev-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .ev-btn {
+            padding: 15px;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            background: white;
+            cursor: pointer;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .ev-btn.selected {
+            border-color: #28a745;
+            background-color: #e8f5e9;
+            color: #28a745;
+        }
+
+        /* 3단계: 작동 중 애니메이션 */
+        .status-box {
+            text-align: center;
+            margin-top: 30px;
+        }
+
+        .elevator-animation {
+            width: 80px;
+            height: 120px;
+            background-color: #343a40;
+            border-radius: 8px;
+            margin: 20px auto;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+
+        .moving-up {
+            animation: moveUp 3s forwards ease-in-out;
+        }
+
+        @keyframes moveUp {
+            0% { transform: translateY(100px); opacity: 0.5; }
+            100% { transform: translateY(-50px); opacity: 1; }
+        }
+
+        /* 4단계: CCTV 확인 및 전송 성공 */
+        .cctv-frame {
+            width: 100%;
+            height: 200px;
+            background-color: #000;
+            border-radius: 12px;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .cctv-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.8;
+        }
+
+        .cctv-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: red;
+            color: white;
+            padding: 3px 8px;
+            font-size: 12px;
+            border-radius: 4px;
+            font-weight: bold;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.3; }
+        }
+
+        .success-msg {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 14px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="app-header">
+        택배전용 스마트 EV
+    </div>
+
+    <!-- STEP 1: QR 코드 스캔 -->
+    <div id="step1" class="step active">
+        <div>
+            <h3 style="margin-bottom: 10px;">1. QR코드 스캔</h3>
+            <p style="color: #6c757d; font-size: 14px; margin-bottom: 20px;">엘리베이터 옆에 부착된 QR코드를 스캐너 중앙에 맞춰주세요.</p>
+            
+            <div class="qr-scanner">
+                <div class="qr-laser"></div>
+                <p>QR 코드를 인식 중입니다...</p>
+            </div>
+        </div>
+        
+        <button class="btn" onclick="scanSuccess()">QR코드 인식 완료 (시연용)</button>
+    </div>
+
+    <!-- STEP 2: 정보 입력 및 소형 EV 선택 -->
+    <div id="step2" class="step">
+        <div>
+            <h3 style="margin-bottom: 10px;">2. 배송 정보 입력</h3>
+            
+            <div class="info-card">
+                <strong>📍 인식된 위치:</strong> <span id="scannedLocation">행복아파트 101동</span>
+            </div>
+
+            <div class="input-group">
+                <label for="roomNumber">배송 호수 입력</label>
+                <input type="number" id="roomNumber" placeholder="예: 1204" value="1204">
+            </div>
+
+            <div class="input-group">
+                <label>소형 엘리베이터 선택</label>
+                <div class="ev-grid">
+                    <div class="ev-btn selected" onclick="selectEV(this, '1호기')">소형 EV 1호기</div>
+                    <div class="ev-btn" onclick="selectEV(this, '2호기')">소형 EV 2호기</div>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn" style="background-color: #28a745;" onclick="sendElevator()">위로 올려보내기 ⬆️</button>
+    </div>
+
+    <!-- STEP 3: 엘리베이터 이동 중 -->
+    <div id="step3" class="step">
+        <div class="status-box">
+            <h3>택배 올려보내는 중...</h3>
+            <p style="color: #6c757d; font-size: 14px; margin-top: 5px;">목적지: <span id="targetFloor">12</span>층</p>
+
+            <div class="elevator-animation moving-up" id="evBox">
+                📦
+            </div>
+            
+            <p style="font-size: 18px; font-weight: bold; color: #007bff;" id="currentFloorText">1층 ➔ 12층 이동 중</p>
+        </div>
+    </div>
+
+    <!-- STEP 4: CCTV 촬영 및 고객/기사 전송 -->
+    <div id="step4" class="step">
+        <div>
+            <h3 style="margin-bottom: 10px;">4. 배송 완료 & CCTV 촬영</h3>
+            
+            <div class="cctv-frame">
+                <div class="cctv-badge">● REC CCTV</div>
+                <!-- CCTV 촬영 가상 이미지 (Unsplash 이미지 활용) -->
+                <img src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?auto=format&fit=crop&w=500&q=80" class="cctv-img" alt="CCTV 촬영 화면">
+            </div>
+
+            <div class="success-msg">
+                <strong>📸 자동 촬영 완료!</strong><br>
+                CCTV 촬영 사진 및 완료 알림이<br><strong>택배 기사님</strong>과 <strong>고객님</strong>에게 전송되었습니다.
+            </div>
+        </div>
+
+        <button class="btn" onclick="resetApp()">다음 배송 진행하기</button>
+    </div>
+</div>
+
+<script>
+    let selectedEVName = '1호기';
+
+    // 화면 전환 함수
+    function goToStep(stepNumber) {
+        document.querySelectorAll('.step').forEach(step => step.classList.remove('active'));
+        document.getElementById(`step${stepNumber}`).classList.add('active');
+    }
+
+    // 1단계: QR 스캔 성공 처리
+    function scanSuccess() {
+        // 실제로는 QR 스캔 후 서버에서 동 정보를 받아옴
+        document.getElementById('scannedLocation').innerText = "행복아파트 101동";
+        goToStep(2);
+    }
+
+    // 2단계: EV 선택 처리
+    function selectEV(element, evName) {
+        document.querySelectorAll('.ev-btn').forEach(btn => btn.classList.remove('selected'));
+        element.classList.add('selected');
+        selectedEVName = evName;
+    }
+
+    // 2단계 -> 3단계: 엘리베이터 올려보내기
+    function sendElevator() {
+        const roomInput = document.getElementById('roomNumber').value;
+        if(!roomInput) {
+            alert('호수를 입력해 주세요!');
+            return;
+        }
+
+        // 호수에서 층수 계산 (예: 1204호 -> 12층)
+        const calculatedFloor = Math.floor(parseInt(roomInput) / 100) || roomInput;
+        document.getElementById('targetFloor').innerText = calculatedFloor;
+        document.getElementById('currentFloorText').innerText = `1층 ➔ ${calculatedFloor}층 이동 중`;
+
+        goToStep(3);
+
+        // 3.5초 후 엘리베이터 도착 및 CCTV 화면(4단계)으로 이동
+        setTimeout(() => {
+            goToStep(4);
+        }, 3500);
+    }
+
+    // 4단계 -> 1단계: 처음으로 리셋
+    function resetApp() {
+        document.getElementById('roomNumber').value = '1204';
+        goToStep(1);
+    }
+</script>
+
+</body>
+</html>
