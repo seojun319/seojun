@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>스마트 택배 전용 엘리베이터 시스템 & 시뮬레이터</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        * {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+        
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Elevator shaft styling */
+        .shaft-grid {
+            background-size: 20px 20px;
+            background-image: 
+                linear-gradient(to right, rgba(226, 232, 240, 0.4) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(226, 232, 240, 0.4) 1px, transparent 1px);
+        }
+
+        .cctv-scanline {
+            background: linear-gradient(
+                rgba(18, 16, 16, 0) 50%, 
+                rgba(0, 0, 0, 0.25) 50%
+            );
+            background-size: 100% 4px;
+        }
+
+        @keyframes laserScan {
+            0% { top: 5%; opacity: 0.8; }
+            50% { top: 90%; opacity: 1; }
+            100% { top: 5%; opacity: 0.8; }
+        }
+        .animate-laser {
+            animation: laserScan 2.2s infinite ease-in-out;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(59, 130, 246, 0.5); }
+            50% { box-shadow: 0 0 25px rgba(59, 130, 246, 0.9); }
+        }
+        .pulse-glow {
+            animation: pulseGlow 2s infinite;
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- Header Navigation -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2.5 rounded-xl shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid font-bold fa-box-archive text-white text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-lg text-white leading-tight">스마트 무인 택배 전용 EV 시스템</h1>
+                    <p class="text-xs text-slate-400">Smart Cargo Elevator & Building Simulator</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    시스템 정상 가동 중
+                </span>
+                <button id="resetAppBtn" class="px-3 py-1.5 text-xs font-semibold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i> 초기화
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Grid -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Mobile App Interface (4 cols on lg) -->
+        <section class="lg:col-span-5 xl:col-span-4 flex flex-col items-center">
+            
+            <!-- Phone Chassis Container -->
+            <div class="w-full max-w-[390px] bg-slate-900 border-4 border-slate-800 rounded-[40px] shadow-2xl overflow-hidden flex flex-col h-[780px] relative ring-1 ring-slate-700/50">
+                
+                <!-- Phone Top Bar Notch & Status -->
+                <div class="bg-slate-950 px-6 py-3 flex justify-between items-center text-xs text-slate-400 select-none border-b border-slate-800/50">
+                    <span class="font-semibold text-slate-200">09:41</span>
+                    <div class="w-16 h-4 bg-slate-900 rounded-full border border-slate-800 flex items-center justify-center">
+                        <div class="w-3 h-3 rounded-full bg-slate-800"></div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-signal text-[10px]"></i>
+                        <i class="fa-solid fa-wifi text-[10px]"></i>
+                        <i class="fa-solid fa-battery-full text-[12px]"></i>
+                    </div>
+                </div>
+
+                <!-- App Main Title Bar -->
+                <div class="bg-slate-900 px-4 py-3 border-b border-slate-800 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-truck-ramp-box text-blue-500"></i>
+                        <span class="font-bold text-sm text-slate-100">택배기사 전용 모바일 앱</span>
+                    </div>
+                    <span id="appStepBadge" class="text-[11px] font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded-full">
+                        STEP 1/4
+                    </span>
+                </div>
+
+                <!-- APP SCREEN CONTAINERS (Swappable Steps) -->
+                <div class="flex-1 relative overflow-y-auto bg-slate-950 p-4">
+                    
+                    <!-- STEP 1: QR Scanner Screen -->
+                    <div id="appStep1" class="step-view space-y-4">
+                        <div class="text-center space-y-1">
+                            <h2 class="font-bold text-base text-slate-100">1. 건물 EV QR 스캔</h2>
+                            <p class="text-xs text-slate-400">엘리베이터 측면 부착된 QR 코드를 카메라에 태그해주세요.</p>
+                        </div>
+
+                        <!-- Simulated Camera Viewfinder -->
+                        <div class="relative w-full aspect-square bg-slate-900 rounded-2xl overflow-hidden border-2 border-slate-800 shadow-inner flex flex-col items-center justify-center group">
+                            <!-- Camera View Grid Pattern -->
+                            <div class="absolute inset-0 bg-[radial-gradient(#334155_1px,transparent_1px)] [background-size:16px_16px] opacity-40"></div>
+                            
+                            <!-- Scanner Target Box -->
+                            <div class="relative w-48 h-48 border-2 border-blue-500/60 rounded-xl flex items-center justify-center p-3 backdrop-blur-[1px]">
+                                <!-- Frame Corners -->
+                                <div class="absolute -top-1 -left-1 w-4 h-4 border-t-4 border-l-4 border-blue-500 rounded-tl-sm"></div>
+                                <div class="absolute -top-1 -right-1 w-4 h-4 border-t-4 border-r-4 border-blue-500 rounded-tr-sm"></div>
+                                <div class="absolute -bottom-1 -left-1 w-4 h-4 border-b-4 border-l-4 border-blue-500 rounded-bl-sm"></div>
+                                <div class="absolute -bottom-1 -right-1 w-4 h-4 border-b-4 border-r-4 border-blue-500 rounded-br-sm"></div>
+                                
+                                <!-- Laser Beam -->
+                                <div class="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-red-500 to-transparent shadow-[0_0_12px_rgba(239,68,68,1)] animate-laser"></div>
+                                
+                                <!-- Realistic Simulated QR Code SVG -->
+                                <svg class="w-36 h-36 opacity-80" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                    <path fill="#ffffff" d="M0 0h30v30H0zM10 10h10v10H10zM70 0h30v30H70zM80 10h10v10H80zM0 70h30v30H0zM10 80h10v10H10z"/>
+                                    <path stroke="#ffffff" stroke-width="4" stroke-dasharray="8 4 2 6" d="M35 10h30M10 35v30M40 40h20v20H40zM70 40h25M40 70v25M70 70h20v20H70z"/>
+                                    <circle cx="50" cy="50" r="6" fill="#3B82F6"/>
+                                </svg>
+                            </div>
+
+                            <p class="absolute bottom-3 text-xs text-slate-400 bg-slate-900/90 px-3 py-1 rounded-full border border-slate-800">
+                                <i class="fa-solid fa-qrcode text-blue-400 mr-1"></i> QR 코드를 자동 인식 중...
+                            </p>
+                        </div>
+
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 space-y-1">
+                            <div class="flex items-center justify-between text-slate-400">
+                                <span>인식 테스트 단지</span>
+                                <span class="text-emerald-400 font-semibold">GPS 감지 완료</span>
+                            </div>
+                            <div class="font-bold text-sm text-white">행복아파트 101동 무인 택배존</div>
+                        </div>
+
+                        <button id="btnScanQR" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-600/30 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-camera"></i> QR 코드 태그 완료 (다음)
+                        </button>
+                    </div>
+
+                    <!-- STEP 2: Delivery List & Elevator Selector -->
+                    <div id="appStep2" class="step-view hidden space-y-4">
+                        <div class="text-center space-y-1">
+                            <h2 class="font-bold text-base text-slate-100">2. 배송 호수 및 EV 선택</h2>
+                            <p class="text-xs text-slate-400">올려보낼 배송 세트를 등록하세요. (층별 자동 정렬)</p>
+                        </div>
+
+                        <!-- Room Input Form -->
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-slate-300">배송 호수 추가</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="inputRoom" placeholder="예: 302, 1204, 2201" class="flex-1 bg-slate-900 border border-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-xl px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none transition-all">
+                                <button id="btnAddRoom" class="px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs flex items-center gap-1.5 transition-all">
+                                    <i class="fa-solid fa-plus"></i> 추가
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Parcel Registration Queue List -->
+                        <div class="space-y-1.5">
+                            <div class="flex items-center justify-between text-xs text-slate-400">
+                                <span class="font-bold text-slate-300">등록된 택배 목록 (<span id="parcelQueueCount">3</span>개)</span>
+                                <span>자동 최적 순서 정렬</span>
+                            </div>
+                            <div id="parcelQueueContainer" class="max-h-40 overflow-y-auto space-y-2 pr-1">
+                                <!-- Dynamic List items rendered by JS -->
+                            </div>
+                        </div>
+
+                        <!-- EV Selector Radio Group -->
+                        <div class="space-y-2 pt-2 border-t border-slate-800">
+                            <label class="block text-xs font-bold text-slate-300">사용할 소형 전용 엘리베이터</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" data-ev="1" class="ev-select-btn active p-3 bg-blue-900/30 border-2 border-blue-500 rounded-xl flex flex-col items-center justify-center gap-1 text-blue-400 transition-all">
+                                    <i class="fa-solid fa-elevator text-lg"></i>
+                                    <span class="text-xs font-bold text-white">소형 EV 1호기</span>
+                                    <span class="text-[10px] text-emerald-400">대기 중 (1층)</span>
+                                </button>
+                                <button type="button" data-ev="2" class="ev-select-btn p-3 bg-slate-900 border-2 border-slate-800 rounded-xl flex flex-col items-center justify-center gap-1 text-slate-400 hover:border-slate-700 transition-all">
+                                    <i class="fa-solid fa-elevator text-lg"></i>
+                                    <span class="text-xs font-bold text-slate-200">소형 EV 2호기</span>
+                                    <span class="text-[10px] text-amber-400">사용 중 (18층)</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button id="btnStartDelivery" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-paper-plane"></i> 택배 상하차 및 위로 올려보내기
+                        </button>
+                    </div>
+
+                    <!-- STEP 3: Live Elevating Status -->
+                    <div id="appStep3" class="step-view hidden space-y-4">
+                        <div class="text-center space-y-1">
+                            <h2 class="font-bold text-base text-slate-100">3. 층별 자동 이동 & 배송 중</h2>
+                            <p class="text-xs text-slate-400">엘리베이터가 순차적으로 이동하며 CCTV 촬영을 수행합니다.</p>
+                        </div>
+
+                        <!-- Realtime Indicator Display -->
+                        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 text-center space-y-3 relative overflow-hidden">
+                            <div class="inline-flex items-center gap-2 px-3 py-1 bg-blue-500/10 border border-blue-500/20 text-blue-400 rounded-full text-xs font-semibold">
+                                <i class="fa-solid fa-spinner animate-spin"></i>
+                                <span id="currentStatusText">엘리베이터 3층 이동 중...</span>
+                            </div>
+
+                            <div class="flex items-center justify-center gap-4 py-2">
+                                <div class="text-right">
+                                    <span class="text-[10px] text-slate-500 block">현재 위치</span>
+                                    <span id="appCurrentFloor" class="text-3xl font-black text-amber-400 font-mono">1F</span>
+                                </div>
+                                <i class="fa-solid fa-angles-right text-blue-500 text-xl animate-pulse"></i>
+                                <div class="text-left">
+                                    <span class="text-[10px] text-slate-500 block">다음 목적지</span>
+                                    <span id="appTargetFloor" class="text-3xl font-black text-blue-400 font-mono">3F</span>
+                                </div>
+                            </div>
+
+                            <!-- Progress Bar -->
+                            <div class="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-800">
+                                <div id="appProgressBar" class="bg-gradient-to-r from-blue-500 to-emerald-400 h-full w-0 transition-all duration-300"></div>
+                            </div>
+                        </div>
+
+                        <!-- Sequential Progress List -->
+                        <div class="space-y-2">
+                            <span class="text-xs font-bold text-slate-300 block">실시간 진행 단계</span>
+                            <div id="liveProgressSteps" class="space-y-2">
+                                <!-- Dynamic Progress Steps JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: Delivery Complete & Realistic Photo Verification -->
+                    <div id="appStep4" class="step-view hidden space-y-4">
+                        <div class="text-center space-y-1">
+                            <h2 class="font-bold text-base text-emerald-400 flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-circle-check"></i> 전체 배송 완료 & CCTV 촬영
+                            </h2>
+                            <p class="text-xs text-slate-400">모든 택배가 무사히 도착하여 고객 및 기사님께 전송되었습니다.</p>
+                        </div>
+
+                        <!-- Main Photo Preview Frame -->
+                        <div class="relative w-full aspect-[4/3] bg-black rounded-2xl overflow-hidden border-2 border-slate-800 shadow-xl group">
+                            <!-- Overlay CCTV Elements -->
+                            <div class="absolute top-2 left-2 z-10 bg-red-600/90 text-white text-[10px] font-bold px-2 py-0.5 rounded flex items-center gap-1.5 shadow">
+                                <span class="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+                                REC • EV-CAM 01
+                            </div>
+                            <div id="photoTimestamp" class="absolute bottom-2 right-2 z-10 bg-black/75 text-emerald-400 font-mono text-[10px] px-2 py-0.5 rounded border border-emerald-500/30">
+                                2026-09-23 11:58 (3F)
+                            </div>
+                            <div class="cctv-scanline absolute inset-0 pointer-events-none z-10"></div>
+
+                            <!-- Display Image -->
+                            <img id="mainPhotoDisplay" src="" alt="CCTV Delivery Shot" class="w-full h-full object-cover transition-all duration-300">
+                        </div>
+
+                        <!-- Photo Gallery Thumbnails -->
+                        <div class="space-y-1.5">
+                            <span class="text-xs font-bold text-slate-300 block">층별 촬영 사진 선택 (<span id="photoCountText">0</span>)</span>
+                            <div id="photoGalleryThumbs" class="flex gap-2 overflow-x-auto pb-1">
+                                <!-- Dynamic Thumbnails JS -->
+                            </div>
+                        </div>
+
+                        <!-- Summary Card -->
+                        <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs space-y-1.5 text-slate-300">
+                            <div class="flex justify-between text-slate-400">
+                                <span>배송 상태</span>
+                                <span class="text-emerald-400 font-semibold">고객 전송 완료</span>
+                            </div>
+                            <div class="font-bold text-slate-100" id="summaryRooms">302호, 701호, 1204호 배송 완료</div>
+                        </div>
+
+                        <button id="btnNewBatch" class="w-full py-3.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl shadow-lg transition-all flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-plus-circle"></i> 다음 배송 세트 시작하기
+                        </button>
+                    </div>
+
+                </div>
+
+                <!-- Phone Bottom Navigation Bar Simulation -->
+                <div class="bg-slate-950 px-6 py-2 border-t border-slate-800 flex justify-center items-center">
+                    <div class="w-32 h-1 bg-slate-700 rounded-full"></div>
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- RIGHT COLUMN: Interactive Building Elevator Shaft Simulator (7-8 cols) -->
+        <section class="lg:col-span-7 xl:col-span-8 bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-2xl flex flex-col justify-between relative overflow-hidden">
+            
+            <!-- Simulator Header Info -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                <div>
+                    <h2 class="font-bold text-lg text-white flex items-center gap-2">
+                        <i class="fa-solid fa-building text-blue-500"></i>
+                        실시간 건물 엘리베이터 작동 시뮬레이터
+                    </h2>
+                    <p class="text-xs text-slate-400">행복아파트 101동 화물/택배 전용 샤프트 내부 동작 현황</p>
+                </div>
+                
+                <!-- Speed & Status Controls -->
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-1.5 bg-slate-950 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
+                        <span class="text-slate-400">속도:</span>
+                        <select id="simSpeedSelect" class="bg-transparent text-blue-400 font-bold outline-none cursor-pointer">
+                            <option value="1">1x (보통)</option>
+                            <option value="1.5" selected>1.5x (빠름)</option>
+                            <option value="2.5">2.5x (초고속)</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SIMULATOR CANVAS / SHAFT VIEW -->
+            <div class="my-4 flex-1 bg-slate-950 rounded-2xl border border-slate-800 relative overflow-hidden flex shaft-grid min-h-[460px]">
+                
+                <!-- Floor Indicator Panel Left Side -->
+                <div id="shaftFloorRuler" class="w-16 border-r border-slate-800 bg-slate-900/60 flex flex-col justify-between py-3 px-2 select-none z-10">
+                    <!-- Floors rendered dynamic by JS -->
+                </div>
+
+                <!-- Shaft Core & Elevator Cab Movement Area -->
+                <div class="flex-1 relative overflow-hidden flex justify-center items-end">
+                    
+                    <!-- Guide Rails & Steel Cable FX -->
+                    <div class="absolute inset-y-0 left-1/3 w-1 bg-slate-800/80"></div>
+                    <div class="absolute inset-y-0 right-1/3 w-1 bg-slate-800/80"></div>
+                    
+                    <!-- Steel Cables attached to cab -->
+                    <div id="elevatorCables" class="absolute top-0 w-12 flex justify-between px-2 transition-all duration-300 opacity-60">
+                        <div class="w-0.5 bg-slate-400 h-[1000px]"></div>
+                        <div class="w-0.5 bg-slate-400 h-[1000px]"></div>
+                    </div>
+
+                    <!-- ELEVATOR CAB (CARRIAGE) -->
+                    <div id="elevatorCab" class="absolute bottom-2 w-72 sm:w-80 h-32 bg-slate-800 border-2 border-slate-600 rounded-xl shadow-2xl flex flex-col justify-between p-2.5 transition-all duration-700 ease-in-out z-20 pulse-glow">
+                        
+                        <!-- Cab Top Beam & Indicator -->
+                        <div class="flex items-center justify-between border-b border-slate-700 pb-1 px-1">
+                            <div class="flex items-center gap-1.5 text-xs text-slate-300">
+                                <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+                                <span class="font-bold text-[11px]" id="cabStatusLabel">소형 EV 1호기 (대기)</span>
+                            </div>
+                            <div class="bg-black/80 px-2.5 py-0.5 rounded border border-slate-700 font-mono text-amber-400 font-black text-sm flex items-center gap-1">
+                                <i id="cabDirectionArrow" class="fa-solid fa-minus text-xs text-slate-500"></i>
+                                <span id="cabFloorDisplay">01F</span>
+                            </div>
+                        </div>
+
+                        <!-- Cab Inside Cargo Bay View -->
+                        <div class="flex-1 my-1 bg-slate-900/90 rounded-lg border border-slate-700/80 p-2 flex items-end justify-between relative overflow-hidden">
+                            <!-- Interior LED Lighting Effect -->
+                            <div class="absolute top-0 inset-x-0 h-1 bg-blue-400/40 blur-[2px]"></div>
+                            
+                            <!-- Cargo Parcels Area (Rendered SVGs) -->
+                            <div id="cabCargoContainer" class="flex items-end gap-1.5 z-10">
+                                <!-- Dynamic parcel boxes inside cab -->
+                            </div>
+
+                            <!-- Integrated Mini Camera Indicator inside elevator -->
+                            <div class="absolute top-1 right-1 flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded text-[9px] text-slate-400 border border-slate-800">
+                                <i class="fa-solid fa-video text-red-500 text-[8px] animate-pulse"></i> CAM
+                            </div>
+                        </div>
+
+                        <!-- Cab Floor Bar & Door Mechanism -->
+                        <div class="border-t border-slate-700 pt-1 flex justify-between items-center text-[10px] text-slate-400 px-1">
+                            <span>최대 하중: 150kg</span>
+                            <span id="cabDoorStatus" class="text-emerald-400 font-bold">문 닫힘</span>
+                        </div>
+                    </div>
+
+                    <!-- Floor Arrival Pulse Flash Banner -->
+                    <div id="floorArrivalBanner" class="absolute inset-x-0 top-1/2 -translate-y-1/2 bg-blue-600/90 text-white font-bold py-2 text-center text-sm shadow-xl border-y border-blue-400 backdrop-blur-md opacity-0 pointer-events-none transition-opacity duration-300 z-30">
+                        <i class="fa-solid fa-camera mr-2"></i> 목적지 도착! CCTV 배송 촬영 및 고객 알림 발송 중...
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Footer Detailed Simulator Legend & Info -->
+            <div class="bg-slate-950 rounded-xl p-3 border border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-400">
+                <div class="flex items-center gap-4">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-blue-600 inline-block"></span> 기사님 탑승 불필요</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500 inline-block"></span> 자동 CCTV 검증</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-400 inline-block"></span> 층별 분할 정차</span>
+                </div>
+                <div class="text-slate-500">
+                    실제 특허 기반 무인 택배 상하차 자동화 시뮬레이션
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        /* ==========================================================================
+           1. REALISTIC CCTV PHOTO DATABASE (Embedded SVG & Canvas Generated Data)
+           ========================================================================== */
+        
+        // Generate high-fidelity realistic delivery scene photos using Data URLs
+        function createDeliveryPhoto(floorNumber, roomNumber, parcelCount) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 640;
+            canvas.height = 480;
+            const ctx = canvas.getContext('2d');
+
+            // Elevator metallic wall background gradient
+            const bgGrad = ctx.createLinearGradient(0, 0, 640, 480);
+            bgGrad.addColorStop(0, '#1e293b');
+            bgGrad.addColorStop(0.5, '#334155');
+            bgGrad.addColorStop(1, '#0f172a');
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 640, 480);
+
+            // Metallic panel lines
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(213, 0); ctx.lineTo(213, 480);
+            ctx.moveTo(426, 0); ctx.lineTo(426, 480);
+            ctx.stroke();
+
+            // Elevator floor diamond pattern
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 320, 640, 160);
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            for(let i=0; i<640; i+=20) {
+                ctx.beginPath();
+                ctx.moveTo(i, 320); ctx.lineTo(i-100, 480);
+                ctx.moveTo(i, 320); ctx.lineTo(i+100, 480);
+                ctx.stroke();
+            }
+
+            // Floor number plate on elevator wall
+            ctx.fillStyle = '#0284c7';
+            ctx.fillRect(40, 40, 100, 60);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 28px monospace';
+            ctx.fillText(`${floorNumber}F`, 65, 80);
+
+            // Draw Parcel Boxes on Floor
+            const boxColors = ['#d97706', '#b45309', '#78350f', '#0284c7', '#059669'];
+            for(let b=0; b<parcelCount; b++) {
+                const bx = 180 + (b * 110);
+                const by = 300 - (b * 15);
+                const bw = 90 + (b % 2 * 20);
+                const bh = 70 + (b % 2 * 15);
+
+                // Box body
+                ctx.fillStyle = boxColors[b % boxColors.length];
+                ctx.fillRect(bx, by, bw, bh);
+                
+                // Box tape & labels
+                ctx.fillStyle = '#fef3c7';
+                ctx.fillRect(bx + bw*0.3, by, bw*0.4, bh);
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(bx + 10, by + 10, 30, 20);
+                
+                // Courier logo text
+                ctx.fillStyle = '#1e293b';
+                ctx.font = 'bold 10px sans-serif';
+                ctx.fillText('CJ대한통운', bx + 12, by + 24);
+
+                // Room Number written on box with marker feel
+                ctx.fillStyle = '#dc2626';
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(`${roomNumber}호`, bx + 15, by + bh - 10);
+            }
+
+            // Handrail bar
+            ctx.fillStyle = '#94a3b8';
+            ctx.fillRect(0, 220, 640, 12);
+
+            return canvas.toDataURL('image/jpeg', 0.85);
+        }
+
+        /* ==========================================================================
+           2. STATE MANAGEMENT & DOM ELEMENTS
+           ========================================================================== */
+        
+        let state = {
+            currentStep: 1,
+            selectedEV: '1',
+            simulationSpeed: 1.5,
+            isSimulating: false,
+            deliveryQueue: [
+                { id: '1', room: '302', floor: 3, status: 'pending', photo: null },
+                { id: '2', room: '701', floor: 7, status: 'pending', photo: null },
+                { id: '3', room: '1204', floor: 12, status: 'pending', photo: null }
+            ],
+            completedDeliveries: [],
+            totalBuildingFloors: 15
+        };
+
+        // Cache DOM Elements
+        const elAppStep1 = document.getElementById('appStep1');
+        const elAppStep2 = document.getElementById('appStep2');
+        const elAppStep3 = document.getElementById('appStep3');
+        const elAppStep4 = document.getElementById('appStep4');
+        const elAppStepBadge = document.getElementById('appStepBadge');
+
+        const elBtnScanQR = document.getElementById('btnScanQR');
+        const elBtnAddRoom = document.getElementById('btnAddRoom');
+        const elInputRoom = document.getElementById('inputRoom');
+        const elParcelQueueContainer = document.getElementById('parcelQueueContainer');
+        const elParcelQueueCount = document.getElementById('parcelQueueCount');
+        const elBtnStartDelivery = document.getElementById('btnStartDelivery');
+
+        const elElevatorCab = document.getElementById('elevatorCab');
+        const elCabFloorDisplay = document.getElementById('cabFloorDisplay');
+        const elCabDirectionArrow = document.getElementById('cabDirectionArrow');
+        const elCabStatusLabel = document.getElementById('cabStatusLabel');
+        const elCabCargoContainer = document.getElementById('cabCargoContainer');
+        const elCabDoorStatus = document.getElementById('cabDoorStatus');
+        const elFloorArrivalBanner = document.getElementById('floorArrivalBanner');
+        const elShaftFloorRuler = document.getElementById('shaftFloorRuler');
+
+        const elCurrentStatusText = document.getElementById('currentStatusText');
+        const elAppCurrentFloor = document.getElementById('appCurrentFloor');
+        const elAppTargetFloor = document.getElementById('appTargetFloor');
+        const elAppProgressBar = document.getElementById('appProgressBar');
+        const elLiveProgressSteps = document.getElementById('liveProgressSteps');
+
+        const elMainPhotoDisplay = document.getElementById('mainPhotoDisplay');
+        const elPhotoGalleryThumbs = document.getElementById('photoGalleryThumbs');
+        const elPhotoTimestamp = document.getElementById('photoTimestamp');
+        const elSummaryRooms = document.getElementById('summaryRooms');
+        const elBtnNewBatch = document.getElementById('btnNewBatch');
+        const elResetAppBtn = document.getElementById('resetAppBtn');
+        const elSimSpeedSelect = document.getElementById('simSpeedSelect');
+
+        /* ==========================================================================
+           3. UI RENDERERS & EVENT HANDLERS
+           ========================================================================== */
+
+        // Initialize Simulator Building Shaft Floor Markers
+        function initShaftRuler() {
+            elShaftFloorRuler.innerHTML = '';
+            for(let f = state.totalBuildingFloors; f >= 1; f--) {
+                const floorDiv = document.createElement('div');
+                floorDiv.className = 'flex items-center justify-between text-[11px] font-mono text-slate-400 h-6 px-1 rounded hover:bg-slate-800/50';
+                floorDiv.id = `shaftRulerF${f}`;
+                floorDiv.innerHTML = `
+                    <span class="font-bold text-slate-300">${f < 10 ? '0' + f : f}F</span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-700 floor-dot"></span>
+                `;
+                elShaftFloorRuler.appendChild(floorDiv);
+            }
+        }
+
+        // Render Parcel Registration Queue in Mobile App Step 2
+        function renderParcelQueue() {
+            elParcelQueueContainer.innerHTML = '';
+            elParcelQueueCount.innerText = state.deliveryQueue.length;
+
+            if (state.deliveryQueue.length === 0) {
+                elParcelQueueContainer.innerHTML = `
+                    <div class="text-center py-6 text-xs text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                        등록된 배송 호수가 없습니다. 호수를 추가해 주세요.
+                    </div>
+                `;
+                return;
+            }
+
+            state.deliveryQueue.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-2.5 bg-slate-900 border border-slate-800 rounded-xl text-xs hover:border-slate-700 transition-all';
+                div.innerHTML = `
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-500 border border-amber-500/20 flex items-center justify-center font-bold">
+                            <i class="fa-solid fa-box"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-white text-sm block">${item.room}호</span>
+                            <span class="text-[10px] text-slate-400">${item.floor}층 배송 목적지</span>
+                        </div>
+                    </div>
+                    <button onclick="removeQueueItem(${index})" class="text-slate-500 hover:text-red-400 p-1.5 transition-colors">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                `;
+                elParcelQueueContainer.appendChild(div);
+            });
+
+            // Update Cab visuals when queue changes
+            renderCabParcels();
+        }
+
+        // Render Parcel SVGs Inside Simulator Cab
+        function renderCabParcels() {
+            elCabCargoContainer.innerHTML = '';
+            state.deliveryQueue.forEach((item, idx) => {
+                const boxSvg = document.createElement('div');
+                boxSvg.className = 'flex flex-col items-center group cursor-pointer transition-transform hover:scale-110';
+                boxSvg.innerHTML = `
+                    <div class="bg-amber-600 border border-amber-400 text-slate-950 font-black text-[9px] px-1 py-0.5 rounded shadow flex items-center gap-1">
+                        <i class="fa-solid fa-box"></i> ${item.room}
+                    </div>
+                `;
+                elCabCargoContainer.appendChild(boxSvg);
+            });
+        }
+
+        // Add Room to Queue
+        function addRoomToQueue() {
+            const val = elInputRoom.value.trim();
+            if (!val) return;
+
+            const roomNum = parseInt(val);
+            if (isNaN(roomNum) || roomNum <= 0) {
+                alert('올바른 호수를 입력해 주세요.');
+                return;
+            }
+
+            // Estimate floor (e.g. 1204 -> 12F, 302 -> 3F)
+            const floor = Math.floor(roomNum / 100) || roomNum;
+
+            if (state.deliveryQueue.some(i => i.room === String(roomNum))) {
+                alert('이미 목록에 있는 호수입니다.');
+                return;
+            }
+
+            state.deliveryQueue.push({
+                id: Date.now().toString(),
+                room: String(roomNum),
+                floor: floor,
+                status: 'pending',
+                photo: null
+            });
+
+            // Auto sort ascending by floor for optimal route
+            state.deliveryQueue.sort((a, b) => a.floor - b.floor);
+
+            elInputRoom.value = '';
+            renderParcelQueue();
+        }
+
+        function removeQueueItem(index) {
+            state.deliveryQueue.splice(index, 1);
+            renderParcelQueue();
+        }
+
+        // Step Navigation Handler
+        function switchStep(step) {
+            state.currentStep = step;
+            elAppStepBadge.innerText = `STEP ${step}/4`;
+
+            [elAppStep1, elAppStep2, elAppStep3, elAppStep4].forEach((el, idx) => {
+                if (idx + 1 === step) {
+                    el.classList.remove('hidden');
+                } else {
+                    el.classList.add('hidden');
+                }
+            });
+        }
+
+        /* ==========================================================================
+           4. ELEVATOR SIMULATION ENGINE
+           ========================================================================== */
+
+        async function startDeliverySimulation() {
+            if (state.deliveryQueue.length === 0) {
+                alert('배송할 호수를 하나 이상 입력해 주세요.');
+                return;
+            }
+
+            state.isSimulating = true;
+            switchStep(3);
+
+            // Setup Step 3 Progress List
+            elLiveProgressSteps.innerHTML = '';
+            state.deliveryQueue.forEach((item, idx) => {
+                const itemDiv = document.createElement('div');
+                itemDiv.id = `stepProgress_${idx}`;
+                itemDiv.className = 'p-3 bg-slate-900 border border-slate-800 rounded-xl flex items-center justify-between text-xs text-slate-400';
+                itemDiv.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-2 h-2 rounded-full bg-slate-600 status-dot"></span>
+                        <span class="font-bold text-slate-200">${item.room}호 (${item.floor}층)</span>
+                    </div>
+                    <span class="status-label text-[11px]">대기 중</span>
+                `;
+                elLiveProgressSteps.appendChild(itemDiv);
+            });
+
+            // Execute Sequential Multi-Stop Delivery
+            const speedFactor = parseFloat(state.simulationSpeed);
+            let currentFloor = 1;
+
+            for (let i = 0; i < state.deliveryQueue.length; i++) {
+                const target = state.deliveryQueue[i];
+
+                // Update Status Bar
+                if (elAppCurrentFloor) elAppCurrentFloor.innerText = `${currentFloor < 10 ? '0' : ''}${currentFloor}F`;
+                if (elAppTargetFloor) elAppTargetFloor.innerText = `${target.floor < 10 ? '0' : ''}${target.floor}F`;
+                if (elCurrentStatusText) elCurrentStatusText.innerText = `${target.floor}층으로 엘리베이터 이동 중...`;
+                if (elCabStatusLabel) elCabStatusLabel.innerText = `소형 EV ${state.selectedEV}호기 (${target.floor}F 이동 중)`;
+                if (elCabDirectionArrow) elCabDirectionArrow.className = 'fa-solid fa-arrow-up text-blue-400 animate-bounce';
+
+                // Update Active Step UI safely
+                const currentStepEl = document.getElementById(`stepProgress_${i}`);
+                if (currentStepEl) {
+                    currentStepEl.className = 'p-3 bg-blue-900/30 border border-blue-500/50 rounded-xl flex items-center justify-between text-xs text-blue-300';
+                    const statusDot = currentStepEl.querySelector('.status-dot');
+                    if (statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-blue-400 animate-ping';
+                    const statusLabel = currentStepEl.querySelector('.status-label');
+                    if (statusLabel) statusLabel.innerText = '이동 중...';
+                }
+
+                // Animate Simulator Cab Movement
+                await animateCabToFloor(target.floor, speedFactor);
+
+                // Arrival & CCTV Capture Phase
+                if (elCabDirectionArrow) elCabDirectionArrow.className = 'fa-solid fa-minus text-slate-500';
+                if (elCabFloorDisplay) elCabFloorDisplay.innerText = `${target.floor < 10 ? '0' : ''}${target.floor}F`;
+                if (elCabStatusLabel) elCabStatusLabel.innerText = `소형 EV ${state.selectedEV}호기 (${target.floor}F 배송 중)`;
+                if (elCabDoorStatus) {
+                    elCabDoorStatus.innerText = '문 열림 • 상하차 중';
+                    elCabDoorStatus.className = 'text-amber-400 font-bold animate-pulse';
+                }
+
+                // Banner alert on simulator
+                if (elFloorArrivalBanner) {
+                    elFloorArrivalBanner.innerText = `📍 ${target.floor}층 도착! ${target.room}호 무인 배송 & CCTV 자동 촬영 중...`;
+                    elFloorArrivalBanner.style.opacity = '1';
+                }
+
+                // Generate Photorealistic CCTV Capture Photo
+                const photoDataUrl = createDeliveryPhoto(target.floor, target.room, i + 1);
+                target.photo = photoDataUrl;
+
+                // Delay for door opening & photo capture
+                await new Promise(r => setTimeout(r, 2200 / speedFactor));
+
+                // Mark Step Completed safely
+                if (currentStepEl) {
+                    currentStepEl.className = 'p-3 bg-emerald-900/20 border border-emerald-500/30 rounded-xl flex items-center justify-between text-xs text-emerald-400';
+                    const statusDot = currentStepEl.querySelector('.status-dot');
+                    if (statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-emerald-400';
+                    const statusLabel = currentStepEl.querySelector('.status-label');
+                    if (statusLabel) statusLabel.innerText = '배송 & CCTV 전송 완료';
+                }
+
+                if (elFloorArrivalBanner) elFloorArrivalBanner.style.opacity = '0';
+                if (elCabDoorStatus) {
+                    elCabDoorStatus.innerText = '문 닫힘';
+                    elCabDoorStatus.className = 'text-emerald-400 font-bold';
+                }
+
+                // Update progress bar
+                const progressPercent = Math.round(((i + 1) / state.deliveryQueue.length) * 100);
+                if (elAppProgressBar) elAppProgressBar.style.width = `${progressPercent}%`;
+
+                currentFloor = target.floor;
+            }
+
+            // Return to Step 4 Verification Screen
+            state.isSimulating = false;
+            renderCompletedGallery();
+            switchStep(4);
+        }
+
+        // Animate Elevator Cab Smooth Shift in Building Shaft
+        function animateCabToFloor(targetFloor, speedFactor) {
+            return new Promise(resolve => {
+                // Calculate translateY percentage based on 15-floor building
+                const bottomPercent = ((targetFloor - 1) / (state.totalBuildingFloors - 1)) * 78;
+                
+                elElevatorCab.style.bottom = `${Math.max(2, bottomPercent)}%`;
+
+                // Highlight current floor on shaft ruler
+                document.querySelectorAll('#shaftFloorRuler > div').forEach(el => el.classList.remove('bg-blue-600/30', 'border-blue-500'));
+                const activeRuler = document.getElementById(`shaftRulerF${targetFloor}`);
+                if (activeRuler) {
+                    activeRuler.classList.add('bg-blue-600/30');
+                }
+
+                setTimeout(() => {
+                    resolve();
+                }, 2800 / speedFactor);
+            });
+        }
+
+        // Render Step 4 Photos and Gallery
+        function renderCompletedGallery() {
+            elPhotoGalleryThumbs.innerHTML = '';
+            
+            const roomsList = state.deliveryQueue.map(i => `${i.room}호`).join(', ');
+            elSummaryRooms.innerText = `${roomsList} 배송 및 CCTV 촬영 완료`;
+            document.getElementById('photoCountText').innerText = state.deliveryQueue.length;
+
+            state.deliveryQueue.forEach((item, idx) => {
+                const thumb = document.createElement('div');
+                thumb.className = `flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 cursor-pointer transition-all ${idx === 0 ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-slate-800 opacity-60 hover:opacity-100'}`;
+                thumb.innerHTML = `<img src="${item.photo}" class="w-full h-full object-cover">`;
+                
+                thumb.onclick = () => {
+                    document.querySelectorAll('#photoGalleryThumbs > div').forEach(d => {
+                        d.className = 'flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 border-slate-800 opacity-60 hover:opacity-100 cursor-pointer transition-all';
+                    });
+                    thumb.className = 'flex-shrink-0 w-16 h-16 rounded-xl overflow-hidden border-2 border-blue-500 ring-2 ring-blue-500/30 cursor-pointer transition-all';
+                    
+                    elMainPhotoDisplay.src = item.photo;
+                    elPhotoTimestamp.innerText = `2026-09-23 11:58 (${item.floor}F - ${item.room}호)`;
+                };
+
+                elPhotoGalleryThumbs.appendChild(thumb);
+            });
+
+            if (state.deliveryQueue.length > 0) {
+                elMainPhotoDisplay.src = state.deliveryQueue[0].photo;
+                elPhotoTimestamp.innerText = `2026-09-23 11:58 (${state.deliveryQueue[0].floor}F - ${state.deliveryQueue[0].room}호)`;
+            }
+        }
+
+        /* ==========================================================================
+           5. EVENT BINDINGS & INITIALIZATION
+           ========================================================================== */
+
+        // Step 1 QR Button
+        elBtnScanQR.onclick = () => {
+            switchStep(2);
+        };
+
+        // Step 2 Add Room Button & Enter Key
+        elBtnAddRoom.onclick = addRoomToQueue;
+        elInputRoom.onkeydown = (e) => {
+            if (e.key === 'Enter') addRoomToQueue();
+        };
+
+        // EV Selector Toggle
+        document.querySelectorAll('.ev-select-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.ev-select-btn').forEach(b => {
+                    b.classList.remove('active', 'bg-blue-900/30', 'border-blue-500', 'text-blue-400');
+                    b.classList.add('bg-slate-900', 'border-slate-800', 'text-slate-400');
+                });
+                btn.classList.add('active', 'bg-blue-900/30', 'border-blue-500', 'text-blue-400');
+                btn.classList.remove('bg-slate-900', 'border-slate-800', 'text-slate-400');
+                state.selectedEV = btn.dataset.ev;
+            };
+        });
+
+        // Start Delivery Simulation Button
+        elBtnStartDelivery.onclick = startDeliverySimulation;
+
+        // New Batch Restart
+        elBtnNewBatch.onclick = () => {
+            switchStep(1);
+        };
+
+        // Reset App Top Button
+        elResetAppBtn.onclick = () => {
+            state.deliveryQueue = [
+                { id: '1', room: '302', floor: 3, status: 'pending', photo: null },
+                { id: '2', room: '701', floor: 7, status: 'pending', photo: null },
+                { id: '3', room: '1204', floor: 12, status: 'pending', photo: null }
+            ];
+            elElevatorCab.style.bottom = '2%';
+            elCabFloorDisplay.innerText = '01F';
+            renderParcelQueue();
+            switchStep(1);
+        };
+
+        // Speed Selector
+        elSimSpeedSelect.onchange = (e) => {
+            state.simulationSpeed = parseFloat(e.target.value);
+        };
+
+        // On Load Init
+        window.onload = () => {
+            initShaftRuler();
+            renderParcelQueue();
+            switchStep(1);
+        };
+
+    </script>
+</body>
+</html>
+```
+
+### 🌟 구현된 주요 개선사항
+
+1. **실시간 건물 엘리베이터 작동 시뮬레이터 (우측 레이아웃)**:
+   * **검은 화면 해소**: 건물 샤프트, 가이드 레일, 와이어 케이블, 층별 눈금자 및 엘리베이터 승강기 내부 조명과 택배 상자 SVG/Canvas 그래픽이 상시 선명하게 표시됩니다.
+   * **동적 움직임 시뮬레이션**: 앱에서 '배송 시작' 버튼을 누르면 승강기가 실제 건물 층수(3층 ➔ 7층 ➔ 12층 등)로 부드럽게 올라가며 문 열림/닫힘 및 도착 알림 래치를 작동시킵니다.
+2. **현장감 넘치는 층별 CCTV 자동 촬영 시스템**:
+   * 각 층에 도착할 때마다 엘리베이터 내부 메탈 벽면, 핸드레일, 층수 표지판, 해당 동호수 마킹 택배 상자가 그려진 **실제 현장 CCTV 스타일 사진(DataURL)을 즉석에서 생성**합니다.
+   * 배송 완료 후 4단계 화면에서 **층별 썸네일을 클릭하여 각 층별 CCTV 확인 및 타임스탬프**를 확인할 수 있습니다.
+3. **직관적인 모바일 앱 UI (좌측 핸드폰 프레임)**:
+   * **QR 코드 스캐너 화면 (1단계)**: 빨간색 레이저 애니메이션과 가상 카메라인터페이스를 제공합니다.
+   * **호수 추가 & 최적 동선 정렬 (2단계)**: 기사님이 배송할 호수를 입력하면 층수별 오름차순으로 자동 정렬됩니다.
+   * **실시간 상하차 배송 진행 (3단계)**: 현재 위치, 다음 목적지, 프로그레스 바 및 층별 진행률을 한눈에 보여줍니다.
